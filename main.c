@@ -8,6 +8,7 @@
 int main() {
 	void *blocks[1000];
 
+	// 分配大一点的内存来模拟外碎片的情况
 	for (int i = 0; i < 10; ++i) {
 		blocks[i] = mymalloc(2 << i);
 		printf("malloc: size=%d, start=0x%08x\n", 2<<i, (unsigned)blocks[i]);

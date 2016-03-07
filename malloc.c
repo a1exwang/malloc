@@ -50,34 +50,8 @@ void list_add(list_node_t *node, list_node_t *new_node) {
 }
 static int total_free_size = BRK_INIT_SIZE;
 
-void *mymalloc(int size) {
-	if (total_free_size < size) {
-		sbrk(size);
-	}
-	list_node_t *current = free_head.next;
-	do {
-		// 找到一个足够大的块
-		if (current->free && current->size >= size) {
-			void *ret = current->start;
-			current->free = 0;
-			
-			// 如果空闲块比需要的大则把剩余的部分新建成为一个块
-			if (current->size != size) {
-				list_node_t *new_node = list_alloc();
-				new_node->free = 1;
-				new_node->size = current->size - size;
-				new_node->start = (char*)current->start + size;
-				list_add(current, new_node);
 
-				current->size = size;
-			}
-			total_free_size -= size;
-			return ret;
-		}
-		current = current->next;
-	} while (current != &free_head);
-	return 0;
-}
+
 void myfree(void *mem) {
 	list_node_t *current = free_head.next;
 	while (current != &free_head) {
@@ -100,14 +74,41 @@ void myfree(void *mem) {
 		current = current->next;
 	}
 }
+void *my_first_alloc(int size) {
+	if (total_free_size < size) {
+		sbrk(size);
+	}
+	list_node_t *current = free_head.next;
+	do {
+		// 找到一个足够大的块
+		if (current->free && current->size >= size) {
+			void *ret = current->start;
+			current->free = 0;
 
+			// 如果空闲块比需要的大则把剩余的部分新建成为一个块
+			if (current->size != size) {
+				list_node_t *new_node = list_alloc();
+				new_node->free = 1;
+				new_node->size = current->size - size;
+				new_node->start = (char*)current->start + size;
+				list_add(current, new_node);
+
+				current->size = size;
+			}
+			total_free_size -= size;
+			return ret;
+		}
+		current = current->next;
+	} while (current != &free_head);
+	return 0;
+}
 void *my_best_alloc(int size) {
 	if (total_free_size < size) {
 		sbrk(size);
 	}
 	list_node_t *current = free_head.next;
 	int min = BRK_SIZE;
-	list_node_t *min_node;
+	list_node_t *min_node = 0;
 	do {
 		// 找到最小且足够的块
 		if (current->free && current->size >= size) {
@@ -127,7 +128,7 @@ void *my_best_alloc(int size) {
 	void *ret = current->start;
 	current->free = 0;
 
-	// 如果空闲块比需要的大则把剩余的部分新建成为一个块
+	// 如果空闲块比需要的大则把剩余的部分分割成为一个块
 	if (current->size != size) {
 		list_node_t *new_node = list_alloc();
 		new_node->free = 1;
@@ -161,4 +162,49 @@ void my_best_free(void *mem) {
 		}
 		current = current->next;
 	}
+}
+
+void *my_worst_alloc(int size) {
+	if (total_free_size < size) {
+		sbrk(size);
+	}
+	list_node_t *current = free_head.next;
+	int max = 0;
+	list_node_t *max_node = 0;
+	do {
+		// 找到最小且足够的块
+		if (current->free && current->size >= size) {
+			if (current->size < max) {
+				max_node = current;
+				max = current->size;
+			}
+		}
+		current = current->next;
+	} while (current != &free_head);
+
+	if (max == BRK_SIZE) {
+		return 0;
+	}
+
+	current = max_node;
+	void *ret = current->start;
+	current->free = 0;
+
+	// 如果空闲块比需要的大则把剩余的部分分割成为一个块
+	if (current->size != size) {
+		list_node_t *new_node = list_alloc();
+		new_node->free = 1;
+		new_node->size = current->size - size;
+		new_node->start = (char*)current->start + size;
+		list_add(current, new_node);
+
+		current->size = size;
+	}
+	total_free_size -= size;
+	return ret;
+}
+
+
+void *mymalloc(int size) {
+	return my_best_alloc(size);
 }
