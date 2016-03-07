@@ -9,6 +9,7 @@ typedef struct list_node {
 } list_node_t;
 
 static list_node_t free_head = {
+	0,
 	&free_head, &free_head,
 	brk,
 	BRK_INIT_SIZE,
@@ -17,6 +18,7 @@ static list_node_t free_head = {
 
 #define NODE_STRUCT_COUNT 100
 list_node_t nodes[NODE_STRUCT_COUNT] = { 0 };
+void list_init(list_node_t *node);
 list_node_t *list_alloc() {
 	for (int i = 0; i < NODE_STRUCT_COUNT; ++i) {
 		if (!nodes[i].allocated) {
@@ -25,6 +27,13 @@ list_node_t *list_alloc() {
 		}
 	}
 	return 0;
+}
+void list_free(list_node_t *node) {
+	for (int i = 0; i < NODE_STRUCT_COUNT; ++i) {
+		if (&nodes[i] == node) {
+			nodes[i].allocated = 0;
+		}
+	}
 }
 void list_init(list_node_t *node) {
 	node->last = node->next = 0;
@@ -46,11 +55,13 @@ void *mymalloc(int size) {
 		sbrk(size);
 	}
 	list_node_t *current = free_head.next;
-	while (current != &free_head) {
+	do {
+		// 找到一个足够大的块
 		if (current->free && current->size >= size) {
 			void *ret = current->start;
 			current->free = 0;
-				
+			
+			// 如果空闲块比需要的大则把剩余的部分新建成为一个块
 			if (current->size != size) {
 				list_node_t *new_node = list_alloc();
 				new_node->free = 1;
@@ -62,7 +73,8 @@ void *mymalloc(int size) {
 			}
 			return ret;
 		}
-	}
+		current = current->next;
+	} while (current != &free_head);
 	return 0;
 }
 
@@ -71,8 +83,20 @@ void myfree(void *mem) {
 	list_node_t *current = free_head.next;
 	while (current != &free_head) {
 		if (current->start == mem) {
-			void *ret = current->start;
 			current->free = 0;
+			if (current->next->free && 
+				(char*)current->start + current->size == (char*)current->next->start) {
+				list_node_t *next = current->next;
+				// 合并current和next
+				current->size += next->size;
+
+				// 释放next, 并且维护链表
+				
+				current->next = next->next;
+				next->next = current;
+				list_free(next);
+			}
 		}
+		current = current->next;
 	}
 }
