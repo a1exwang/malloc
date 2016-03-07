@@ -14,6 +14,7 @@ int main() {
 			myfree(blocks[i]);
 	}
 
+	// free后重新alloc发现可以分配到之前free过的地址, 说明free成功了
 	for (int i = 0; i < 10; ++i) {
 		blocks[i] = mymalloc(2 << i);
 		printf("malloc: size=%d, start=0x%08x\n", 2 << i, (unsigned)blocks[i]);

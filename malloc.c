@@ -71,6 +71,7 @@ void *mymalloc(int size) {
 
 				current->size = size;
 			}
+			total_free_size -= size;
 			return ret;
 		}
 		current = current->next;
@@ -83,7 +84,8 @@ void myfree(void *mem) {
 	list_node_t *current = free_head.next;
 	while (current != &free_head) {
 		if (current->start == mem) {
-			current->free = 0;
+			current->free = 1;
+			total_free_size += current->size;
 			if (current->next->free && 
 				(char*)current->start + current->size == (char*)current->next->start) {
 				list_node_t *next = current->next;
